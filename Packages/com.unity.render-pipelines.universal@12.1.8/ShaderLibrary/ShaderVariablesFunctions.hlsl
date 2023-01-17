@@ -3,7 +3,8 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ShaderVariablesFunctions.deprecated.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Debug/DebuggingCommon.hlsl"
-
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Input.hlsl"
+ 
 VertexPositionInputs GetVertexPositionInputs(float3 positionOS)
 {
     VertexPositionInputs input;
@@ -255,6 +256,22 @@ half ComputeFogIntensity(half fogFactor)
     return fogIntensity;
 }
 
+// woods break fog start
+float4 _BreakFogPosition0;
+float4 _BreakFogPosition1;
+float4 _BreakFogPosition2;
+float4 _BreakFogPosition3;
+half ComputeBreakFog(float4 positionWS)
+{
+    half dist = 1000;
+    dist = min(dist, distance(_BreakFogPosition0.xyz, positionWS.xyz) / _BreakFogPosition0.w);
+    dist = min(dist, distance(_BreakFogPosition1.xyz, positionWS.xyz) / _BreakFogPosition1.w);
+    dist = min(dist, distance(_BreakFogPosition2.xyz, positionWS.xyz) / _BreakFogPosition2.w);
+    dist = min(dist, distance(_BreakFogPosition3.xyz, positionWS.xyz) / _BreakFogPosition3.w);
+    return dist;
+}
+// woods break fog end
+
 // Force enable fog fragment shader evaluation
 #define _FOG_FRAGMENT 1
 real InitializeInputDataFog(float4 positionWS, real vertFogFactor)
@@ -266,6 +283,11 @@ real InitializeInputDataFog(float4 positionWS, real vertFogFactor)
         float viewZ = -(mul(UNITY_MATRIX_V, positionWS).z);
         // View Z is 0 at camera pos, remap 0 to near plane.
         float nearToFarZ = max(viewZ - _ProjectionParams.y, 0);
+
+        // woods break fog start
+        nearToFarZ = min(nearToFarZ, ComputeBreakFog(positionWS));
+        // woods break fog end
+
         fogFactor = ComputeFogFactorZ0ToFar(nearToFarZ);
     #endif
 #else
